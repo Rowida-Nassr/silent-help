@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "163185301379",
+    "project_id": "silent-help-a142f",
+    "storage_bucket": "silent-help-a142f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:163185301379:android:cae9299f436955c1ce48b6",
+        "android_client_info": {
+          "package_name": "com.example.newflutterproject"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc_oVc2-sX2Qad3HVIZFF-Q8mqybjHsT8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_background.dart';
 import 'parent_register.dart';
+import 'parent_dashboard.dart';
+
 // لو عندك Parent Home Screen ابعتيلي اسمه وهنوديه لها بدل Pop
 // import 'parent_home.dart';
 
@@ -61,7 +63,12 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
     );
 
     // ✅ مؤقتًا: نرجّع للي قبلها أو نفتح Parent Home (لما نعملها)
-    Navigator.pop(context);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+    );
+
 
     // مثال لو عندك ParentHomeScreen:
     // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ParentHomeScreen()));

@@ -119,6 +119,9 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
     setState(() => _saving = false);
 
     _toast("Saved ✅ (UI only). You can login later when we add Firebase Auth.");
+    // login mo2kat
+    await prefs.setString('parent_password', _passCtrl.text.trim());
+    await prefs.setBool('parent_registered', true);
     Navigator.pop(context);
   }
 

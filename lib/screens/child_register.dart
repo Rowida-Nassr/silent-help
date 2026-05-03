@@ -1,47 +1,34 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/auth_storage.dart';
-import 'parent_dashboard.dart';
-import 'parent_register.dart';
+import '../services/family_service.dart';
+import 'child_home.dart';
 import 'app_background.dart';
 
-class ParentLoginScreen extends StatefulWidget {
-  const ParentLoginScreen({super.key});
+class ChildRegisterScreen extends StatefulWidget {
+  const ChildRegisterScreen({super.key});
 
   @override
-  State<ParentLoginScreen> createState() => _ParentLoginScreenState();
+  State<ChildRegisterScreen> createState() => _ChildRegisterScreenState();
 }
 
-class _ParentLoginScreenState extends State<ParentLoginScreen> {
+class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _invite = TextEditingController();
+
   bool _obscure = true;
   bool _loading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _autoGoIfLoggedIn();
-  }
-
-  Future<void> _autoGoIfLoggedIn() async {
-  final token = await AuthStorage.getToken();
-  final role = await AuthStorage.getRole();
-
-  if (token != null && token.isNotEmpty && role == "parent" && mounted) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-    );
-  }
-}
-
-
-  @override
   void dispose() {
+    _name.dispose();
     _email.dispose();
     _password.dispose();
+    _invite.dispose();
     super.dispose();
   }
 
@@ -49,28 +36,31 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  Future<void> _login() async {
+  Future<void> _registerAndJoin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
 
     try {
-      final res = await AuthService.login(
+      // 1) Register Child
+      final res = await AuthService.register(
+        fullName: _name.text.trim(),
         email: _email.text.trim(),
         password: _password.text.trim(),
+        role: "child",
+        phone: null,
       );
 
       final token = (res["token"] ?? "").toString();
       final user = res["user"];
 
       if (token.isEmpty || user is! Map) {
-        throw Exception("Login response missing token/user");
+        throw Exception("Register response missing token/user");
       }
 
       final role = (user["role"] ?? "").toString();
-      if (role != "parent") {
-        // لو دخل child بالغلط
-        throw Exception("This login is for Parents only.");
+      if (role != "child") {
+        throw Exception("This registration is for Child only.");
       }
 
       await AuthStorage.saveAuth(
@@ -81,12 +71,18 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
         userId: (user["id"] ?? "").toString(),
       );
 
-      if (!mounted) return;
-      _toast("Logged in ✅");
+      // 2) Join Family using invite code
+      final code = _invite.text.trim();
+      await FamilyService.joinFamily(inviteCode: code);
 
-      Navigator.pushReplacement(
+      if (!mounted) return;
+      _toast("Child registered + linked ✅");
+
+      // 3) Go to child home
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+        MaterialPageRoute(builder: (_) => const ChildHomeScreen()),
+        (_) => false,
       );
     } catch (e) {
       _toast(e.toString().replaceFirst("Exception: ", ""));
@@ -126,7 +122,7 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Text(
-                        "Parent Login 🔐",
+                        "Child Register 🧒",
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -154,15 +150,31 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                     child: Column(
                       children: [
                         const Text(
-                          "Welcome back 👋",
+                          "Create Child Account",
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          "Login to see alerts & dashboard",
+                          "Enter Invite Code from Parent Dashboard",
                           style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 18),
+
+                        TextFormField(
+                          controller: _name,
+                          decoration: InputDecoration(
+                            labelText: "Full Name",
+                            prefixIcon: const Icon(Icons.person_rounded),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          validator: (v) {
+                            final s = (v ?? "").trim();
+                            if (s.isEmpty) return "Name is required";
+                            if (s.length < 2) return "Enter a valid name";
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
 
                         TextFormField(
                           controller: _email,
@@ -200,6 +212,22 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 12),
+
+                        TextFormField(
+                          controller: _invite,
+                          decoration: InputDecoration(
+                            labelText: "Invite Code",
+                            prefixIcon: const Icon(Icons.qr_code_rounded),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          validator: (v) {
+                            final s = (v ?? "").trim();
+                            if (s.isEmpty) return "Invite code is required";
+                            if (s.length < 4) return "Invite code looks too short";
+                            return null;
+                          },
+                        ),
 
                         const SizedBox(height: 18),
 
@@ -207,7 +235,7 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                           width: double.infinity,
                           height: 54,
                           child: ElevatedButton(
-                            onPressed: _loading ? null : _login,
+                            onPressed: _loading ? null : _registerAndJoin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xff2F6BFF),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -215,27 +243,15 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                             ),
                             child: _loading
                                 ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
                                 : const Text(
-                              "Login",
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
-                            ),
+                                    "Register & Link",
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                                  ),
                           ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ParentRegisterScreen()),
-                            );
-                          },
-                          child: const Text("Create account"),
                         ),
                       ],
                     ),

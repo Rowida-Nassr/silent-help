@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import 'app_background.dart';
+import '../services/auth_storage.dart';
+import '../services/alert_service.dart';
+import '../services/family_service.dart';
+import 'parent_login.dart';
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -13,22 +18,28 @@ class ParentDashboardScreen extends StatefulWidget {
 class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   bool _loading = true;
 
-  // Stored values
+  // UI (local temporary)
   String childName = "-";
   String childGender = "-";
   String childDob = "-";
 
-  String parentName = "-";
-  String parentRole = "-";
-  String parentDob = "-";
+  // Parent info (mixed)
+  String parentName = "-"; // from AuthStorage
+  String parentRole = "-"; // local temporary
+  String parentDob = "-"; // local temporary
 
-  String phone1 = "-";
-  String phone2 = "-";
-  String email = "-";
+  String phone1 = "-"; // local
+  String phone2 = "-"; // local
+  String email = "-"; // from AuthStorage
 
+  // Last SOS (prefer backend alerts)
   String lastSosTime = "-";
   String lastSosLocationUrl = "";
   String lastSosMessage = "-";
+  String lastSosTrigger = "-";
+
+  // Alerts list (from backend)
+  List<Map<String, dynamic>> _alerts = [];
 
   @override
   void initState() {
@@ -36,27 +47,92 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     _load();
   }
 
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _goLogin() async {
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const ParentLoginScreen()),
+          (_) => false,
+    );
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
 
+    // ✅ لو مفيش token أو role مش parent -> login
+    final token = await AuthStorage.getToken();
+    final role = await AuthStorage.getRole();
+    if (token == null || token.isEmpty || role != "parent") {
+      await _goLogin();
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
 
+    // ✅ Local temporary
     childName = prefs.getString('child_name') ?? "-";
     childGender = prefs.getString('child_gender') ?? "-";
     childDob = prefs.getString('child_dob') ?? "-";
 
-    parentName = prefs.getString('parent_name') ?? "-";
-    parentRole = prefs.getString('parent_role') ?? "-";
-    parentDob = prefs.getString('parent_dob') ?? "-";
-
     phone1 = prefs.getString('parent_phone') ?? "-";
     phone2 = prefs.getString('parent_phone_2') ?? "-";
-    email = prefs.getString('parent_email_ui') ?? "-";
+    parentDob = prefs.getString('parent_dob') ?? "-";
+    parentRole = prefs.getString('parent_role') ?? "-";
 
-    lastSosTime = prefs.getString('last_sos_time') ?? "-";
-    lastSosLocationUrl = prefs.getString('last_sos_location_url') ?? "";
-    lastSosMessage = prefs.getString('last_sos_message') ?? "-";
+    // ✅ From backend login storage
+    // لازم تكوني عاملة getEmail/getName في AuthStorage
+    email = (await AuthStorage.getEmail()) ?? "-";
+    parentName = (await AuthStorage.getName()) ?? "-";
 
+    // ✅ Local SOS fallback
+    final localSosTime = prefs.getString('last_sos_time') ?? "-";
+    final localSosLocation = prefs.getString('last_sos_location_url') ?? "";
+    final localSosMessage = prefs.getString('last_sos_message') ?? "-";
+
+    // ✅ Get alerts from backend
+    try {
+      final alertsRaw = await AlertService.getAlerts();
+      _alerts = alertsRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+
+      if (_alerts.isNotEmpty) {
+        final a = _alerts.first;
+
+        final lat = a["latitude"];
+        final lng = a["longitude"];
+        final createdAt = (a["createdAt"] ?? "").toString();
+        final trigger = (a["triggerType"] ?? "-").toString();
+        final childNm = (a["childName"] ?? "").toString();
+
+        lastSosTime = createdAt.isEmpty ? "-" : createdAt;
+        lastSosTrigger = trigger;
+
+        if (lat != null && lng != null) {
+          lastSosLocationUrl = "https://www.google.com/maps?q=$lat,$lng";
+        } else {
+          lastSosLocationUrl = "";
+        }
+
+        lastSosMessage = "SOS from ${childNm.isEmpty ? "your child" : childNm} ($trigger)";
+      } else {
+        // fallback local
+        lastSosTime = localSosTime;
+        lastSosLocationUrl = localSosLocation;
+        lastSosMessage = localSosMessage;
+        lastSosTrigger = "-";
+      }
+    } catch (_) {
+      // fallback local
+      lastSosTime = localSosTime;
+      lastSosLocationUrl = localSosLocation;
+      lastSosMessage = localSosMessage;
+      lastSosTrigger = "-";
+    }
+
+    if (!mounted) return;
     setState(() => _loading = false);
   }
 
@@ -71,6 +147,39 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       return;
     }
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _showInviteCodeDialog(String code) async {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Invite Code"),
+        content: SelectableText(
+          code,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateInvite() async {
+    try {
+      final code = await FamilyService.generateInvite();
+      if (code.trim().isEmpty) {
+        _toast("Invite code is empty (backend issue).");
+        return;
+      }
+      await _showInviteCodeDialog(code);
+    } catch (e) {
+      _toast("Failed to generate invite: $e");
+    }
   }
 
   Future<void> _logout() async {
@@ -88,16 +197,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
     if (ok != true) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    // UI-only logout flag
-    await prefs.setBool('parent_logged_in', false);
-
-    if (!mounted) return;
-    Navigator.pop(context); // يرجع للي قبلها (Role Select أو Parent Login)
-  }
-
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    await AuthStorage.clear();
+    await _goLogin();
   }
 
   @override
@@ -110,8 +211,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 12),
-
-                // Top bar
                 Row(
                   children: [
                     _BouncyIconButton(
@@ -129,10 +228,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                     _chip("Parent Dashboard"),
                   ],
                 ),
-
                 const SizedBox(height: 14),
-
-                // Content
                 Expanded(
                   child: _loading
                       ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -146,16 +242,18 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                         const SizedBox(height: 10),
 
                         _card(
-                          title: "Account",
+                          title: "Account (Backend ✅)",
                           icon: Icons.account_circle_rounded,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _kv("Email", email),
                               const SizedBox(height: 8),
-                              _kv("Phone 1", phone1),
+                              _kv("Name", parentName),
                               const SizedBox(height: 8),
-                              _kv("Phone 2", phone2 == "-" ? "Not set" : phone2),
+                              _kv("Phone 1 (local)", phone1),
+                              const SizedBox(height: 8),
+                              _kv("Phone 2 (local)", phone2 == "-" ? "Not set" : phone2),
                             ],
                           ),
                         ),
@@ -163,7 +261,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                         const SizedBox(height: 14),
 
                         _card(
-                          title: "Child Information",
+                          title: "Child Information (UI temp ⏳)",
                           icon: Icons.child_care_rounded,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,16 +278,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                         const SizedBox(height: 14),
 
                         _card(
-                          title: "Parent Information",
+                          title: "Parent Information (mixed)",
                           icon: Icons.family_restroom_rounded,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _kv("Name", parentName),
+                              _kv("Name (backend)", parentName),
                               const SizedBox(height: 8),
-                              _kv("Role", parentRole),
+                              _kv("Role (local)", parentRole),
                               const SizedBox(height: 8),
-                              _kv("Birthday", parentDob),
+                              _kv("Birthday (local)", parentDob),
                             ],
                           ),
                         ),
@@ -197,13 +295,15 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                         const SizedBox(height: 14),
 
                         _card(
-                          title: "Last SOS 🚨",
+                          title: "Last SOS (Backend ✅)",
                           icon: Icons.warning_rounded,
                           accent: Colors.red,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _kv("Time", lastSosTime),
+                              const SizedBox(height: 8),
+                              _kv("Trigger", lastSosTrigger),
                               const SizedBox(height: 8),
                               _kv("Message", lastSosMessage),
                               const SizedBox(height: 10),
@@ -225,6 +325,57 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        _card(
+                          title: "Alerts (Backend ✅)",
+                          icon: Icons.notifications_active_rounded,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _kv("Total", _alerts.length.toString()),
+                              const SizedBox(height: 10),
+                              if (_alerts.isEmpty)
+                                Text(
+                                  "No alerts yet.",
+                                  style: TextStyle(color: Colors.black.withOpacity(0.6), fontWeight: FontWeight.w700),
+                                )
+                              else
+                                ..._alerts.take(3).map((a) {
+                                  final t = (a["createdAt"] ?? "").toString();
+                                  final trig = (a["triggerType"] ?? "").toString();
+                                  final cn = (a["childName"] ?? "").toString();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text(
+                                      "• $t — ${cn.isEmpty ? "Child" : cn} ($trig)",
+                                      style: const TextStyle(fontWeight: FontWeight.w800),
+                                    ),
+                                  );
+                                }),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: _generateInvite,
+                            icon: const Icon(Icons.qr_code_rounded, color: Colors.white),
+                            label: const Text(
+                              "Generate Invite Code",
+                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xff2F6BFF),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              elevation: 0,
+                            ),
                           ),
                         ),
 
@@ -298,11 +449,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
-          BoxShadow(
-            color: a.withOpacity(0.18),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          )
+          BoxShadow(color: a.withOpacity(0.18), blurRadius: 22, offset: const Offset(0, 12)),
         ],
       ),
       child: Column(
@@ -313,18 +460,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  color: a.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: a.withOpacity(0.12), shape: BoxShape.circle),
                 child: Icon(icon, color: a, size: 26),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
+                child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
               ),
             ],
           ),
@@ -341,18 +482,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       children: [
         Expanded(
           flex: 4,
-          child: Text(
-            k,
-            style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w800),
-          ),
+          child: Text(k, style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w800)),
         ),
         const SizedBox(width: 10),
         Expanded(
           flex: 7,
-          child: Text(
-            v,
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
+          child: Text(v, style: const TextStyle(fontWeight: FontWeight.w900)),
         ),
       ],
     );
@@ -392,11 +527,7 @@ class _BouncyIconButtonState extends State<_BouncyIconButton> {
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white.withOpacity(0.25)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.10),
-                blurRadius: 10,
-                offset: const Offset(0, 6),
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 10, offset: const Offset(0, 6)),
             ],
           ),
           child: Icon(widget.icon, color: Colors.white, size: 26),

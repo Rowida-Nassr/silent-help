@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'app_background.dart';
+import '../services/alert_service.dart';
+
 
 class ChildHomeScreen extends StatelessWidget {
   const ChildHomeScreen({super.key});
@@ -47,6 +49,12 @@ class ChildHomeScreen extends StatelessWidget {
       }
 
       final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      await AlertService.createAlert(
+        triggerType: "button",
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      );
+
       final locationUrl = "https://www.google.com/maps?q=${pos.latitude},${pos.longitude}";
 
       await prefs.setString('last_sos_time', DateTime.now().toString());
@@ -57,7 +65,11 @@ class ChildHomeScreen extends StatelessWidget {
         "🚨 SOS ALERT 🚨\nSilent Help App\n\nA child needs help immediately!\nLocation:\n$locationUrl\n\nPlease respond urgently.",
       );
 
-      final waUrl = Uri.parse("https://wa.me/$parentPhone?text=$message");
+      String digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+      final phone = digitsOnly(parentPhone);
+
+      final waUrl = Uri.parse("https://wa.me/$phone?text=$message");
+
 
       if (!await canLaunchUrl(waUrl)) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_background.dart';
+import '../services/auth_service.dart';
+import '../services/auth_storage.dart';
+import 'parent_dashboard.dart';
 
 class ParentRegisterScreen extends StatefulWidget {
   const ParentRegisterScreen({super.key});
@@ -79,7 +82,6 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
   bool _looksLikePhone(String s) {
     final v = _digitsOnly(s);
-    // بسيط: رقم يبدأ + أو رقم محلي، وطوله معقول
     if (v.isEmpty) return false;
     if (v.startsWith('+')) return v.length >= 10 && v.length <= 16;
     return v.length >= 10 && v.length <= 15;
@@ -87,6 +89,7 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (_childDob == null) {
       _toast("Please select Child birthday.");
       return;
@@ -98,31 +101,67 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
     setState(() => _saving = true);
 
-    // ✅ UI only الآن: حفظ محلي
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      // ✅ 1) REGISTER on Backend
+      final res = await AuthService.register(
+        fullName: _parentNameCtrl.text.trim(), // backend wants fullName
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text.trim(),
+        role: "parent",
+        phone: _digitsOnly(_phone1Ctrl.text.trim()),
+      );
 
-    // مهم لزر SOS
-    await prefs.setString('parent_phone', _digitsOnly(_phone1Ctrl.text.trim()));
-    await prefs.setString('parent_phone_2', _digitsOnly(_phone2Ctrl.text.trim()));
+      final token = (res["token"] ?? "").toString();
+      final user = res["user"];
 
-    // باقي البيانات (اختياري للتجربة)
-    await prefs.setString('child_name', _childNameCtrl.text.trim());
-    await prefs.setString('child_gender', _childGender);
-    await prefs.setString('child_dob', _fmtDate(_childDob!));
+      if (token.isEmpty || user is! Map) {
+        throw Exception("Register response missing token/user");
+      }
 
-    await prefs.setString('parent_name', _parentNameCtrl.text.trim());
-    await prefs.setString('parent_role', _parentRole);
-    await prefs.setString('parent_dob', _fmtDate(_parentDob!));
+      // ✅ 2) Save backend auth (token + user) in AuthStorage
+      await AuthStorage.saveAuth(
+        token: token,
+        role: (user["role"] ?? "parent").toString(),
+        email: (user["email"] ?? _emailCtrl.text.trim()).toString(),
+        name: (user["fullName"] ?? _parentNameCtrl.text.trim()).toString(),
+        userId: (user["id"] ?? "").toString(),
+      );
 
-    await prefs.setString('parent_email_ui', _emailCtrl.text.trim());
+      // ✅ 3) Save temporary UI fields for Dashboard + SOS (SharedPreferences)
+      final prefs = await SharedPreferences.getInstance();
 
-    setState(() => _saving = false);
+      // Child info (temporary until backend supports it)
+      await prefs.setString('child_name', _childNameCtrl.text.trim());
+      await prefs.setString('child_gender', _childGender);
+      await prefs.setString('child_dob', _fmtDate(_childDob!));
 
-    _toast("Saved ✅ (UI only). You can login later when we add Firebase Auth.");
-    // login mo2kat
-    await prefs.setString('parent_password', _passCtrl.text.trim());
-    await prefs.setBool('parent_registered', true);
-    Navigator.pop(context);
+      // Parent extra info (temporary)
+      await prefs.setString('parent_role', _parentRole);
+      await prefs.setString('parent_dob', _fmtDate(_parentDob!));
+
+      // Phones used by SOS
+      await prefs.setString('parent_phone', _digitsOnly(_phone1Ctrl.text.trim()));
+      await prefs.setString('parent_phone_2', _digitsOnly(_phone2Ctrl.text.trim()));
+
+      // Optional: keep UI email key (some screens read it)
+      await prefs.setString('parent_email_ui', _emailCtrl.text.trim());
+
+      await prefs.setBool('parent_registered', true);
+
+      if (!mounted) return;
+      _toast("Registered ✅");
+
+      // ✅ 4) Go directly to Dashboard
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+            (_) => false,
+      );
+    } catch (e) {
+      _toast("Register failed: ${e.toString().replaceFirst("Exception: ", "")}");
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   void _toast(String msg) {
@@ -171,7 +210,6 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
                 const SizedBox(height: 18),
 
-                // Title
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -201,7 +239,6 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
                 const SizedBox(height: 14),
 
-                // Form card
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.only(bottom: 18),
@@ -337,7 +374,7 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                               ),
                               validator: (v) {
                                 final s = (v ?? "").trim();
-                                if (s.isEmpty) return null; // optional
+                                if (s.isEmpty) return null;
                                 if (!_looksLikePhone(s)) return "Enter a valid phone number";
                                 return null;
                               },
@@ -426,10 +463,9 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                             ),
 
                             const SizedBox(height: 10),
-
                             Center(
                               child: Text(
-                                "UI only الآن — هنربط Firebase Auth بعدين ✅",
+                                "Backend + Temporary fields ✅",
                                 style: TextStyle(
                                   color: Colors.black.withOpacity(0.55),
                                   fontWeight: FontWeight.w700,

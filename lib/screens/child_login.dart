@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/auth_storage.dart';
-import 'parent_dashboard.dart';
-import 'parent_register.dart';
+import 'child_home.dart';
 import 'app_background.dart';
+import 'child_join_family.dart';
 
-class ParentLoginScreen extends StatefulWidget {
-  const ParentLoginScreen({super.key});
+
+class ChildLoginScreen extends StatefulWidget {
+  const ChildLoginScreen({super.key});
 
   @override
-  State<ParentLoginScreen> createState() => _ParentLoginScreenState();
+  State<ChildLoginScreen> createState() => _ChildLoginScreenState();
 }
 
-class _ParentLoginScreenState extends State<ParentLoginScreen> {
+class _ChildLoginScreenState extends State<ChildLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -26,17 +27,15 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
   }
 
   Future<void> _autoGoIfLoggedIn() async {
-  final token = await AuthStorage.getToken();
-  final role = await AuthStorage.getRole();
-
-  if (token != null && token.isNotEmpty && role == "parent" && mounted) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-    );
+    final token = await AuthStorage.getToken();
+    final role = await AuthStorage.getRole();
+    if (token != null && token.isNotEmpty && role == "child" && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ChildHomeScreen()),
+      );
+    }
   }
-}
-
 
   @override
   void dispose() {
@@ -53,7 +52,6 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
-
     try {
       final res = await AuthService.login(
         email: _email.text.trim(),
@@ -68,9 +66,8 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
       }
 
       final role = (user["role"] ?? "").toString();
-      if (role != "parent") {
-        // لو دخل child بالغلط
-        throw Exception("This login is for Parents only.");
+      if (role != "child") {
+        throw Exception("This login is for Child only.");
       }
 
       await AuthStorage.saveAuth(
@@ -82,11 +79,12 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
       );
 
       if (!mounted) return;
-      _toast("Logged in ✅");
+      _toast("Child logged in ✅");
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+        MaterialPageRoute(builder: (_) => const ChildJoinFamilyScreen()),
+
       );
     } catch (e) {
       _toast(e.toString().replaceFirst("Exception: ", ""));
@@ -126,7 +124,7 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Text(
-                        "Parent Login 🔐",
+                        "Child Login 👶",
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -154,12 +152,12 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                     child: Column(
                       children: [
                         const Text(
-                          "Welcome back 👋",
+                          "Child Access 🔐",
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          "Login to see alerts & dashboard",
+                          "Login once — then SOS is always ready ✅",
                           style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 18),
@@ -224,18 +222,6 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
                             ),
                           ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ParentRegisterScreen()),
-                            );
-                          },
-                          child: const Text("Create account"),
                         ),
                       ],
                     ),

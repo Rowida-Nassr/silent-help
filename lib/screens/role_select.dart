@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'child_home.dart';
 import 'parent_login.dart';
 import 'app_background.dart';
+import 'child_login.dart';
+import 'child_auth_screen.dart';
+
 
 class RoleSelectScreen extends StatefulWidget {
   const RoleSelectScreen({super.key});
@@ -116,9 +119,9 @@ class _RoleSelectScreenState extends State<RoleSelectScreen>
                     _BouncyCard(
                       onTap: () {
                         Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ChildHomeScreen()),
-                        );
+  context,
+  MaterialPageRoute(builder: (_) => const ChildAuthScreen()),
+);
                       },
                       child: _roleCard(
                         icon: Icons.child_care,

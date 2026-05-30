@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../services/alert_service.dart'; // ← غير الـ path حسب مشروعك
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -11,38 +11,54 @@ class SosScreen extends StatefulWidget {
   State<SosScreen> createState() => _SosScreenState();
 }
 
-
 class _SosScreenState extends State<SosScreen> {
-
-  //String parentPhone = "201XXXXXXXXX";
-  // ⚠️ لازم يكون بصيغة دولية: مصر = 20
+  bool _isLoading = false; // ← عشان نوقف الضغط المزدوج
 
   Future<void> sendSOS() async {
-    final prefs = await SharedPreferences.getInstance();
-    final parentPhone = prefs.getString('parent_phone');
+    if (_isLoading) return; // منع الضغط أكتر من مرة
+    setState(() => _isLoading = true);
 
-    if (parentPhone == null || parentPhone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ولي الأمر لازم يسجل رقمه الأول من I am Parent')),
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final parentPhone = prefs.getString('parent_phone');
+
+      if (parentPhone == null || parentPhone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ولي الأمر لازم يسجل رقمه الأول من I am Parent'),
+          ),
+        );
+        return;
+      }
+
+      // 1) Check & request permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      // 2) Get location
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
-      return;
-    }
 
-    // 1) Check permission
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+      // 3) ← الجديد: سجّل الـ alert في الـ backend
+      try {
+        await AlertService.createAlert(
+          triggerType: "button",
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+      } catch (e) {
+        // لو الـ backend فشل، متوقفش الـ WhatsApp
+        debugPrint("Alert service error: $e");
+      }
 
-    // 2) Get location
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+      // 4) بعث WhatsApp زي ما كان
+      String locationUrl =
+          "https://www.google.com/maps?q=${position.latitude},${position.longitude}";
 
-    String locationUrl =
-        "https://www.google.com/maps?q=${position.latitude},${position.longitude}";
-
-    // 3) Message
-    String message = """
+      String message = """
 🚨 SOS ALERT 🚨
 Silent Help App
 
@@ -53,67 +69,75 @@ $locationUrl
 Please respond urgently.
 """;
 
-    String whatsappUrl =
-        "https://wa.me/$parentPhone?text=${Uri.encodeComponent(message)}";
+      String whatsappUrl =
+          "https://wa.me/$parentPhone?text=${Uri.encodeComponent(message)}";
 
-    // 4) Open WhatsApp
-    if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
-      await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
+      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+        await launchUrl(
+          Uri.parse(whatsappUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xffFFF0F0),
+      backgroundColor: const Color(0xffFFF0F0),
       appBar: AppBar(
-        title: Text("Emergency SOS"),
+        title: const Text("Emergency SOS"),
         backgroundColor: Colors.red,
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-
-            Icon(Icons.warning_rounded, color: Colors.red, size: 120),
-
-            SizedBox(height: 20),
-
-            Text(
+            const Icon(Icons.warning_rounded, color: Colors.red, size: 120),
+            const SizedBox(height: 20),
+            const Text(
               "If you are in danger\nPress SOS",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 40),
 
-            SizedBox(height: 40),
-
+            // ← زر SOS مع loading indicator
             GestureDetector(
-              onTap: sendSOS,
+              onTap: _isLoading ? null : sendSOS,
               child: Container(
                 width: 200,
                 height: 200,
                 decoration: BoxDecoration(
-                  color: Colors.red,
+                  color: _isLoading ? Colors.red.shade300 : Colors.red,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.redAccent, blurRadius: 30)
+                  boxShadow: const [
+                    BoxShadow(color: Colors.redAccent, blurRadius: 30),
                   ],
                 ),
                 child: Center(
-                  child: Text(
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
                     "SOS",
                     style: TextStyle(
-                        fontSize: 50,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold),
+                      fontSize: 50,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ),
 
-            SizedBox(height: 30),
-
-            Text(
+            const SizedBox(height: 30),
+            const Text(
               "Help message will be sent\nwith your live location",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16),

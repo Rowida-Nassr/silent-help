@@ -1,3 +1,4 @@
 class ApiConfig {
-  static const String baseUrl = "http://192.168.1.11:5141";
+  static const String host = "http://10.0.2.2:5141";
+  static const String api = "$host/api";
 }

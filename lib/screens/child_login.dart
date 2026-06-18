@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
 import '../services/auth_storage.dart';
 import 'child_home.dart';
 import 'app_background.dart';
-import 'child_join_family.dart';
-
 
 class ChildLoginScreen extends StatefulWidget {
   const ChildLoginScreen({super.key});
@@ -17,6 +16,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+
   bool _obscure = true;
   bool _loading = false;
 
@@ -29,10 +29,13 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   Future<void> _autoGoIfLoggedIn() async {
     final token = await AuthStorage.getToken();
     final role = await AuthStorage.getRole();
-    if (token != null && token.isNotEmpty && role == "child" && mounted) {
+
+    if (!mounted) return;
+
+    if (token != null && token.isNotEmpty && role == "child") {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ChildHomeScreen()),
+        MaterialPageRoute(builder: (context) => const ChildHomeScreen()),
       );
     }
   }
@@ -45,13 +48,16 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
+
     try {
       final res = await AuthService.login(
         email: _email.text.trim(),
@@ -66,6 +72,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       }
 
       final role = (user["role"] ?? "").toString();
+
       if (role != "child") {
         throw Exception("This login is for Child only.");
       }
@@ -79,17 +86,21 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       );
 
       if (!mounted) return;
+
       _toast("Child logged in ✅");
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ChildJoinFamilyScreen()),
-
+        MaterialPageRoute(builder: (context) => const ChildHomeScreen()),
       );
     } catch (e) {
+      if (!mounted) return;
+
       _toast(e.toString().replaceFirst("Exception: ", ""));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -107,44 +118,59 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Icons.shield_rounded, color: Colors.white, size: 34),
+                    const Icon(
+                      Icons.shield_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
                     const SizedBox(width: 10),
                     const Text(
                       "Silent Help",
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Text(
                         "Child Login 👶",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 26),
-
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
+                    color: Colors.white.withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 24,
                         offset: const Offset(0, 14),
-                      )
+                      ),
                     ],
                   ),
                   child: Form(
@@ -153,22 +179,29 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                       children: [
                         const Text(
                           "Child Access 🔐",
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           "Login once — then SOS is always ready ✅",
-                          style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 18),
-
                         TextFormField(
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: "Email",
                             prefixIcon: const Icon(Icons.email_rounded),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                           validator: (v) {
                             final s = (v ?? "").trim();
@@ -178,7 +211,6 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                           },
                         ),
                         const SizedBox(height: 12),
-
                         TextFormField(
                           controller: _password,
                           obscureText: _obscure,
@@ -186,10 +218,18 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                             labelText: "Password",
                             prefixIcon: const Icon(Icons.lock_rounded),
                             suffixIcon: IconButton(
-                              onPressed: () => setState(() => _obscure = !_obscure),
-                              icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                              onPressed: () {
+                                setState(() => _obscure = !_obscure);
+                              },
+                              icon: Icon(
+                                _obscure
+                                    ? Icons.visibility_rounded
+                                    : Icons.visibility_off_rounded,
+                              ),
                             ),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                           validator: (v) {
                             final s = (v ?? "");
@@ -198,9 +238,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                             return null;
                           },
                         ),
-
                         const SizedBox(height: 18),
-
                         SizedBox(
                           width: double.infinity,
                           height: 54,
@@ -208,18 +246,27 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                             onPressed: _loading ? null : _login,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xff2F6BFF),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
                               elevation: 0,
                             ),
                             child: _loading
                                 ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                                 : const Text(
                               "Login",
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),

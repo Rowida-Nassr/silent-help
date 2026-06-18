@@ -27,17 +27,17 @@ class AppBackground extends StatelessWidget {
         Positioned(
           top: -60,
           left: -40,
-          child: _circle(220, Colors.white.withOpacity(0.14)),
+          child: _circle(220, Colors.white.withValues(alpha:0.14)),
         ),
         Positioned(
           bottom: -70,
           right: -50,
-          child: _circle(250, Colors.white.withOpacity(0.12)),
+          child: _circle(250, Colors.white.withValues(alpha:0.12)),
         ),
         Positioned(
           top: 260,
           right: -70,
-          child: _circle(170, Colors.white.withOpacity(0.10)),
+          child: _circle(170, Colors.white.withValues(alpha:0.10)),
         ),
 
         // Content

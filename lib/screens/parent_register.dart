@@ -4,6 +4,7 @@ import 'app_background.dart';
 import '../services/auth_service.dart';
 import '../services/auth_storage.dart';
 import 'parent_dashboard.dart';
+import 'role_select.dart';
 
 class ParentRegisterScreen extends StatefulWidget {
   const ParentRegisterScreen({super.key});
@@ -26,7 +27,7 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
   DateTime? _parentDob;
 
   // Contacts
-  final _phone1Ctrl = TextEditingController(); // main SOS phone
+  final _phone1Ctrl = TextEditingController();
   final _phone2Ctrl = TextEditingController();
 
   // Auth
@@ -64,7 +65,10 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
       firstDate: DateTime(2005),
       lastDate: now,
     );
-    if (picked != null) setState(() => _childDob = picked);
+
+    if (picked != null) {
+      setState(() => _childDob = picked);
+    }
   }
 
   Future<void> _pickParentDob() async {
@@ -75,7 +79,10 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
       firstDate: DateTime(1950),
       lastDate: now,
     );
-    if (picked != null) setState(() => _parentDob = picked);
+
+    if (picked != null) {
+      setState(() => _parentDob = picked);
+    }
   }
 
   String _digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -87,6 +94,16 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
     return v.length >= 10 && v.length <= 15;
   }
 
+  void _goToRoleSelect() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RoleSelectScreen(),
+      ),
+          (route) => false,
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -94,6 +111,7 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
       _toast("Please select Child birthday.");
       return;
     }
+
     if (_parentDob == null) {
       _toast("Please select Parent birthday.");
       return;
@@ -102,9 +120,8 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
     setState(() => _saving = true);
 
     try {
-      // ✅ 1) REGISTER on Backend
       final res = await AuthService.register(
-        fullName: _parentNameCtrl.text.trim(), // backend wants fullName
+        fullName: _parentNameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
         role: "parent",
@@ -118,7 +135,6 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
         throw Exception("Register response missing token/user");
       }
 
-      // ✅ 2) Save backend auth (token + user) in AuthStorage
       await AuthStorage.saveAuth(
         token: token,
         role: (user["role"] ?? "parent").toString(),
@@ -127,45 +143,51 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
         userId: (user["id"] ?? "").toString(),
       );
 
-      // ✅ 3) Save temporary UI fields for Dashboard + SOS (SharedPreferences)
       final prefs = await SharedPreferences.getInstance();
 
-      // Child info (temporary until backend supports it)
       await prefs.setString('child_name', _childNameCtrl.text.trim());
       await prefs.setString('child_gender', _childGender);
       await prefs.setString('child_dob', _fmtDate(_childDob!));
 
-      // Parent extra info (temporary)
       await prefs.setString('parent_role', _parentRole);
       await prefs.setString('parent_dob', _fmtDate(_parentDob!));
 
-      // Phones used by SOS
-      await prefs.setString('parent_phone', _digitsOnly(_phone1Ctrl.text.trim()));
-      await prefs.setString('parent_phone_2', _digitsOnly(_phone2Ctrl.text.trim()));
+      await prefs.setString(
+        'parent_phone',
+        _digitsOnly(_phone1Ctrl.text.trim()),
+      );
+      await prefs.setString(
+        'parent_phone_2',
+        _digitsOnly(_phone2Ctrl.text.trim()),
+      );
 
-      // Optional: keep UI email key (some screens read it)
       await prefs.setString('parent_email_ui', _emailCtrl.text.trim());
-
       await prefs.setBool('parent_registered', true);
 
       if (!mounted) return;
+
       _toast("Registered ✅");
 
-      // ✅ 4) Go directly to Dashboard
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+        MaterialPageRoute(
+          builder: (_) => const ParentDashboardScreen(),
+        ),
             (_) => false,
       );
     } catch (e) {
       _toast("Register failed: ${e.toString().replaceFirst("Exception: ", "")}");
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   @override
@@ -179,30 +201,43 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
               children: [
                 const SizedBox(height: 12),
 
-                // 🔝 Top bar
                 Row(
                   children: [
                     _BouncyIconButton(
                       icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.pop(context),
+                      onTap: _goToRoleSelect,
                     ),
                     const SizedBox(width: 10),
-                    const Icon(Icons.shield_rounded, color: Colors.white, size: 34),
+                    const Icon(
+                      Icons.shield_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
                     const SizedBox(width: 10),
                     const Text(
                       "Silent Help",
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Text(
                         "Parent Register 📝",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -219,18 +254,24 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
                       shadows: [
-                        Shadow(blurRadius: 8, color: Colors.black26, offset: Offset(0, 3)),
+                        Shadow(
+                          blurRadius: 8,
+                          color: Colors.black26,
+                          offset: Offset(0, 3),
+                        ),
                       ],
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 6),
+
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Fill the details to receive SOS alerts.",
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.90),
+                      color: Colors.white.withValues(alpha: 0.90),
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -246,14 +287,14 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
+                            color: Colors.black.withValues(alpha: 0.12),
                             blurRadius: 24,
                             offset: const Offset(0, 14),
-                          )
+                          ),
                         ],
                       ),
                       child: Form(
@@ -265,7 +306,10 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
                             TextFormField(
                               controller: _childNameCtrl,
-                              decoration: _inputDeco("Child name", Icons.badge_rounded),
+                              decoration: _inputDeco(
+                                "Child name",
+                                Icons.badge_rounded,
+                              ),
                               validator: (v) {
                                 final s = (v ?? "").trim();
                                 if (s.isEmpty) return "Child name is required";
@@ -273,26 +317,40 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 return null;
                               },
                             ),
+
                             const SizedBox(height: 12),
 
                             Row(
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: _childGender,
+                                    initialValue: _childGender,
                                     items: const [
-                                      DropdownMenuItem(value: "Boy", child: Text("Boy")),
-                                      DropdownMenuItem(value: "Girl", child: Text("Girl")),
+                                      DropdownMenuItem(
+                                        value: "Boy",
+                                        child: Text("Boy"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "Girl",
+                                        child: Text("Girl"),
+                                      ),
                                     ],
-                                    onChanged: (v) => setState(() => _childGender = v ?? "Boy"),
-                                    decoration: _inputDeco("Child gender", Icons.wc_rounded),
+                                    onChanged: (v) {
+                                      setState(() => _childGender = v ?? "Boy");
+                                    },
+                                    decoration: _inputDeco(
+                                      "Child gender",
+                                      Icons.wc_rounded,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _dateField(
                                     label: "Child birthday",
-                                    value: _childDob == null ? "Select date" : _fmtDate(_childDob!),
+                                    value: _childDob == null
+                                        ? "Select date"
+                                        : _fmtDate(_childDob!),
                                     icon: Icons.cake_rounded,
                                     onTap: _pickChildDob,
                                   ),
@@ -307,7 +365,10 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
 
                             TextFormField(
                               controller: _parentNameCtrl,
-                              decoration: _inputDeco("Parent name", Icons.person_rounded),
+                              decoration: _inputDeco(
+                                "Parent name",
+                                Icons.person_rounded,
+                              ),
                               validator: (v) {
                                 final s = (v ?? "").trim();
                                 if (s.isEmpty) return "Parent name is required";
@@ -315,26 +376,40 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 return null;
                               },
                             ),
+
                             const SizedBox(height: 12),
 
                             Row(
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: _parentRole,
+                                    initialValue: _parentRole,
                                     items: const [
-                                      DropdownMenuItem(value: "Mother", child: Text("Mother")),
-                                      DropdownMenuItem(value: "Father", child: Text("Father")),
+                                      DropdownMenuItem(
+                                        value: "Mother",
+                                        child: Text("Mother"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "Father",
+                                        child: Text("Father"),
+                                      ),
                                     ],
-                                    onChanged: (v) => setState(() => _parentRole = v ?? "Mother"),
-                                    decoration: _inputDeco("Parent role", Icons.family_restroom_rounded),
+                                    onChanged: (v) {
+                                      setState(() => _parentRole = v ?? "Mother");
+                                    },
+                                    decoration: _inputDeco(
+                                      "Parent role",
+                                      Icons.family_restroom_rounded,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _dateField(
                                     label: "Parent birthday",
-                                    value: _parentDob == null ? "Select date" : _fmtDate(_parentDob!),
+                                    value: _parentDob == null
+                                        ? "Select date"
+                                        : _fmtDate(_parentDob!),
                                     icon: Icons.cake_outlined,
                                     onTap: _pickParentDob,
                                   ),
@@ -351,31 +426,36 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                               controller: _phone1Ctrl,
                               keyboardType: TextInputType.phone,
                               decoration: _inputDeco(
-                                "Phone 1 (main WhatsApp)",
+                                "Phone 1",
                                 Icons.phone_rounded,
                                 helper: "This number will receive SOS first.",
                               ),
                               validator: (v) {
                                 final s = (v ?? "").trim();
                                 if (s.isEmpty) return "Phone 1 is required";
-                                if (!_looksLikePhone(s)) return "Enter a valid phone number";
+                                if (!_looksLikePhone(s)) {
+                                  return "Enter a valid phone number";
+                                }
                                 return null;
                               },
                             ),
+
                             const SizedBox(height: 12),
 
                             TextFormField(
                               controller: _phone2Ctrl,
                               keyboardType: TextInputType.phone,
                               decoration: _inputDeco(
-                                "Phone 2 (backup)",
+                                "Phone 2",
                                 Icons.phone_in_talk_rounded,
                                 helper: "Optional but recommended.",
                               ),
                               validator: (v) {
                                 final s = (v ?? "").trim();
                                 if (s.isEmpty) return null;
-                                if (!_looksLikePhone(s)) return "Enter a valid phone number";
+                                if (!_looksLikePhone(s)) {
+                                  return "Enter a valid phone number";
+                                }
                                 return null;
                               },
                             ),
@@ -388,7 +468,10 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                             TextFormField(
                               controller: _emailCtrl,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: _inputDeco("Email", Icons.email_rounded),
+                              decoration: _inputDeco(
+                                "Email",
+                                Icons.email_rounded,
+                              ),
                               validator: (v) {
                                 final s = (v ?? "").trim();
                                 if (s.isEmpty) return "Email is required";
@@ -396,6 +479,7 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 return null;
                               },
                             ),
+
                             const SizedBox(height: 12),
 
                             TextFormField(
@@ -405,8 +489,14 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 "Password",
                                 Icons.lock_rounded,
                                 suffix: IconButton(
-                                  onPressed: () => setState(() => _obscure1 = !_obscure1),
-                                  icon: Icon(_obscure1 ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                                  onPressed: () {
+                                    setState(() => _obscure1 = !_obscure1);
+                                  },
+                                  icon: Icon(
+                                    _obscure1
+                                        ? Icons.visibility_rounded
+                                        : Icons.visibility_off_rounded,
+                                  ),
                                 ),
                               ),
                               validator: (v) {
@@ -416,6 +506,7 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 return null;
                               },
                             ),
+
                             const SizedBox(height: 12),
 
                             TextFormField(
@@ -425,14 +516,22 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 "Confirm password",
                                 Icons.lock_outline_rounded,
                                 suffix: IconButton(
-                                  onPressed: () => setState(() => _obscure2 = !_obscure2),
-                                  icon: Icon(_obscure2 ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                                  onPressed: () {
+                                    setState(() => _obscure2 = !_obscure2);
+                                  },
+                                  icon: Icon(
+                                    _obscure2
+                                        ? Icons.visibility_rounded
+                                        : Icons.visibility_off_rounded,
+                                  ),
                                 ),
                               ),
                               validator: (v) {
                                 final s = v ?? "";
                                 if (s.isEmpty) return "Confirm your password";
-                                if (s != _passCtrl.text) return "Passwords do not match";
+                                if (s != _passCtrl.text) {
+                                  return "Passwords do not match";
+                                }
                                 return null;
                               },
                             ),
@@ -446,28 +545,38 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
                                 onPressed: _saving ? null : _save,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xff2F6BFF),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
                                   elevation: 0,
                                 ),
                                 child: _saving
                                     ? const SizedBox(
                                   width: 22,
                                   height: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                                     : const Text(
                                   "Save",
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
 
                             const SizedBox(height: 10),
+
                             Center(
                               child: Text(
                                 "Backend + Temporary fields ✅",
                                 style: TextStyle(
-                                  color: Colors.black.withOpacity(0.55),
+                                  color: Colors.black.withValues(alpha: 0.55),
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -489,24 +598,34 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
   Widget _divider() => Container(
     margin: const EdgeInsets.symmetric(vertical: 2),
     height: 1,
-    color: Colors.black.withOpacity(0.08),
+    color: Colors.black.withValues(alpha: 0.08),
   );
 
   Widget _sectionTitle(String t) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: Text(
       t,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w900,
+      ),
     ),
   );
 
-  InputDecoration _inputDeco(String label, IconData icon, {Widget? suffix, String? helper}) {
+  InputDecoration _inputDeco(
+      String label,
+      IconData icon, {
+        Widget? suffix,
+        String? helper,
+      }) {
     return InputDecoration(
       labelText: label,
       helperText: helper,
       prefixIcon: Icon(icon),
       suffixIcon: suffix,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
     );
   }
 
@@ -523,13 +642,17 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: Text(
           value,
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: value == "Select date" ? Colors.black.withOpacity(0.45) : Colors.black.withOpacity(0.85),
+            color: value == "Select date"
+                ? Colors.black.withValues(alpha: 0.45)
+                : Colors.black.withValues(alpha: 0.85),
           ),
         ),
       ),
@@ -537,12 +660,14 @@ class _ParentRegisterScreenState extends State<ParentRegisterScreen> {
   }
 }
 
-// ✅ Cute back button with bounce + circle background
 class _BouncyIconButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _BouncyIconButton({required this.icon, required this.onTap});
+  const _BouncyIconButton({
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   State<_BouncyIconButton> createState() => _BouncyIconButtonState();
@@ -567,18 +692,24 @@ class _BouncyIconButtonState extends State<_BouncyIconButton> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.18),
+            color: Colors.black.withValues(alpha: 0.18),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.25)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.10),
+                color: Colors.black.withValues(alpha: 0.10),
                 blurRadius: 10,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: Icon(widget.icon, color: Colors.white, size: 26),
+          child: Icon(
+            widget.icon,
+            color: Colors.white,
+            size: 26,
+          ),
         ),
       ),
     );

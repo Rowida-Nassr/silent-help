@@ -38,11 +38,11 @@ class ChildAuthScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
+                    color: Colors.white.withValues(alpha:0.95),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha:0.12),
                         blurRadius: 24,
                         offset: const Offset(0, 14),
                       )
@@ -57,7 +57,7 @@ class ChildAuthScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         "Login once, SOS always ready ✅",
-                        style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w700),
+                        style: TextStyle(color: Colors.black.withValues(alpha:0.55), fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 18),
 
@@ -96,7 +96,7 @@ class ChildAuthScreen extends StatelessWidget {
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black.withOpacity(0.35),
+                            backgroundColor: Colors.black.withValues(alpha:0.35),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                             elevation: 0,
                           ),

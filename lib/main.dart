@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/splash.dart';
+import 'package:hardware_emergency_trigger/hardware_emergency_trigger.dart';
 
-void main() {
-  // شلنا async و await firebase لأننا هنعتمد على الـ Backend الجديد
+import 'screens/splash.dart';
+import 'services/hardware_sos_service.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await HardwareEmergencyTrigger.initialize(
+    debounceMs: 500,
+    enableBackgroundLaunch: true,
+    enableForegroundService: false,
+    enableBootCompleted: false,
+  );
+
+  HardwareSosService.start();
+
   runApp(const SilentHelpApp());
 }
 
@@ -17,8 +29,6 @@ class SilentHelpApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Silent Help',
       theme: ThemeData(
-        // استخدام Google Fonts مباشرة بيحتاج إنترنت في أول مرة
-        // لو مفيش إنترنت ممكن التطبيق يعلق شوية في البداية
         textTheme: GoogleFonts.baloo2TextTheme(),
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(

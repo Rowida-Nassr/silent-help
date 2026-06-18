@@ -36,17 +36,25 @@ class AuthService {
   }) async {
     final uri = Uri.parse("$baseUrl/Auth/register");
 
+    final body = {
+      "fullName": fullName,
+      "email": email,
+      "password": password,
+      "role": role,
+    };
+
+    if (phone != null && phone.trim().isNotEmpty) {
+      body["phone"] = phone.trim();
+    }
+
+    debugPrint("REGISTER URL=$uri");
+    debugPrint("REGISTER REQUEST BODY=${jsonEncode(body)}");
+
     final res = await http
         .post(
       uri,
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "fullName": fullName,
-        "email": email,
-        "password": password,
-        "role": role,
-        "phone": phone,
-      }),
+      body: jsonEncode(body),
     )
         .timeout(const Duration(seconds: 20));
 
@@ -74,14 +82,19 @@ class AuthService {
   }) async {
     final uri = Uri.parse("$baseUrl/Auth/login");
 
+    final body = {
+      "email": email,
+      "password": password,
+    };
+
+    debugPrint("LOGIN URL=$uri");
+    debugPrint("LOGIN REQUEST BODY=${jsonEncode(body)}");
+
     final res = await http
         .post(
       uri,
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "email": email,
-        "password": password,
-      }),
+      body: jsonEncode(body),
     )
         .timeout(const Duration(seconds: 20));
 

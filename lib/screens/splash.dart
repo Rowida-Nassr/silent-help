@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 450),
-          pageBuilder: (_, a, __) => FadeTransition(opacity: a, child: const RoleSelectScreen()),
+          pageBuilder: (_, a, aa) => FadeTransition(opacity: a, child: const RoleSelectScreen()),
         ),
       );
     });
@@ -73,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     return Scaffold(
       body: AnimatedBuilder(
         animation: Listenable.merge([_loop, _intro]),
-        builder: (_, __) {
+        builder: (_, a) {
           final fy = _floatY.value;
 
           return Stack(
@@ -124,10 +124,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 height: 175,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withValues(alpha:0.15),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.blue.withOpacity(_logoGlow.value),
+                                      color: Colors.blue.withValues(alpha:_logoGlow.value),
                                       blurRadius: 38,
                                       spreadRadius: 6,
                                     ),
@@ -140,11 +140,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                   width: 135,
                                   height: 135,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.96),
+                                    color: Colors.white.withValues(alpha:0.96),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.10),
+                                        color: Colors.black.withValues(alpha:0.10),
                                         blurRadius: 22,
                                         offset: const Offset(0, 12),
                                       )
@@ -187,7 +187,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.22),
+                              color: Colors.black.withValues(alpha:0.22),
                               borderRadius: BorderRadius.circular(22),
                             ),
                             child: const Text(
@@ -246,7 +246,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(opacity),
+          color: Colors.white.withValues(alpha:opacity),
           shape: BoxShape.circle,
         ),
       ),
@@ -265,7 +265,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       child: Icon(
         Icons.star_rounded,
         size: size,
-        color: Colors.white.withOpacity(opacity),
+        color: Colors.white.withValues(alpha:opacity),
       ),
     );
   }
@@ -282,11 +282,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         width: 8,
         height: 8,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha:0.9),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha:0.12),
               blurRadius: 6,
               offset: const Offset(0, 2),
             )

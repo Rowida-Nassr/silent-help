@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'child_home.dart';
+//import 'child_home.dart';
 import 'parent_login.dart';
 import 'app_background.dart';
-import 'child_login.dart';
+//import 'child_login.dart';
 import 'child_auth_screen.dart';
 
 
@@ -64,7 +64,7 @@ class _RoleSelectScreenState extends State<RoleSelectScreen>
                         boxShadow: [
                           BoxShadow(
                             blurRadius: 26,
-                            color: Colors.black.withOpacity(0.16),
+                            color: Colors.black.withValues(alpha:0.16),
                             offset: const Offset(0, 14),
                           )
                         ],
@@ -92,9 +92,9 @@ class _RoleSelectScreenState extends State<RoleSelectScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.20),
+                        color: Colors.black.withValues(alpha:0.20),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white.withOpacity(0.18)),
+                        border: Border.all(color: Colors.white.withValues(alpha:0.18)),
                       ),
                       child: const Text(
                         "Choose who you are",
@@ -165,11 +165,11 @@ class _RoleSelectScreenState extends State<RoleSelectScreen>
       width: double.infinity,
       height: 90,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: Colors.white.withValues(alpha:0.95),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.22),
+            color: color.withValues(alpha:0.22),
             blurRadius: 22,
             offset: const Offset(0, 12),
           )
@@ -182,7 +182,7 @@ class _RoleSelectScreenState extends State<RoleSelectScreen>
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha:0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 32, color: color),

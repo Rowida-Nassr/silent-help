@@ -75,7 +75,7 @@ class _ChildJoinFamilyScreenState extends State<ChildJoinFamilyScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withValues(alpha:0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Text(
@@ -92,11 +92,11 @@ class _ChildJoinFamilyScreenState extends State<ChildJoinFamilyScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
+                    color: Colors.white.withValues(alpha:0.95),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha:0.12),
                         blurRadius: 24,
                         offset: const Offset(0, 14),
                       )
@@ -111,7 +111,7 @@ class _ChildJoinFamilyScreenState extends State<ChildJoinFamilyScreen> {
                       const SizedBox(height: 8),
                       Text(
                         "Enter the invite code from Parent Dashboard",
-                        style: TextStyle(color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w700),
+                        style: TextStyle(color: Colors.black.withValues(alpha:0.55), fontWeight: FontWeight.w700),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
